@@ -380,6 +380,26 @@ def train(args):
             if global_step >= args.max_train_steps:
                 break
 
+            if global_step % args.save_every_n_steps == 0:
+                if accelerator.is_main_process:
+                    # checking for saving is in util
+                    src_path = src_stable_diffusion_ckpt if save_stable_diffusion_format else src_diffusers_model_path
+                    train_util.save_sd_model_on_epoch_end_or_stepwise(
+                        args,
+                        False,
+                        accelerator,
+                        src_path,
+                        save_stable_diffusion_format,
+                        use_safetensors,
+                        save_dtype,
+                        epoch,
+                        num_train_epochs,
+                        global_step,
+                        unwrap_model(text_encoder),
+                        unwrap_model(unet),
+                        vae,
+                    )
+
         if args.logging_dir is not None:
             logs = {"loss/epoch": loss_total / len(loss_list)}
             accelerator.log(logs, step=epoch + 1)
@@ -449,6 +469,13 @@ def setup_parser() -> argparse.ArgumentParser:
         type=int,
         default=None,
         help="steps to stop text encoder training, -1 for no training / Text Encoderの学習を止めるステップ数、-1で最初から学習しない",
+    )
+
+    parser.add_argument(
+        "--save_every_n_steps",
+        type=int,
+        default=None,
+        help="save a checkpoint file every n steps",
     )
 
     return parser
